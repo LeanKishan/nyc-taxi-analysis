@@ -8,9 +8,10 @@ data/processed/*.csv
 models/*.pkl
 models/*.joblib
 
-# Reports
+# Reports — keep the DOCX report in git, but ignore figures and intermediates
 reports/figures/*.png
 reports/figures/*.html
+node_modules/
 
 # Python
 __pycache__/

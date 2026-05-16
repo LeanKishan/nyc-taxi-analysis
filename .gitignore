@@ -11,6 +11,7 @@ models/*.joblib
 # Reports — keep the DOCX report in git, but ignore figures and intermediates
 reports/figures/*.png
 reports/figures/*.html
+reports/*.js
 node_modules/
 
 # Python

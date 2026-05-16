@@ -1,0 +1,47 @@
+# Data files (too large for git)
+data/raw/*.parquet
+data/processed/*.parquet
+data/processed/*.csv
+
+# Model artifacts — keep the small LightGBM model file in git so the deployed
+# dashboard can do live inference immediately, but ignore large pickled objects.
+models/*.pkl
+models/*.joblib
+
+# Reports
+reports/figures/*.png
+reports/figures/*.html
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Keep directory structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!models/.gitkeep
+!reports/figures/.gitkeep

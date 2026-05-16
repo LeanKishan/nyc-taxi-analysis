@@ -1,171 +1,132 @@
-# NYC Yellow Taxi 2025 — End-to-End Analytics
+# NYC Yellow Taxi 2025 Analysis
 
-End-to-end data project on **8.5 million NYC Yellow Taxi trips** from January–March 2025. Built to demonstrate the full analytics workflow: ingestion → cleaning → SQL analytics → exploratory analysis → machine learning → an interactive dashboard.
+Data analysis project on NYC Yellow Taxi trip records from January to March 2025. I built this to get hands-on practice with a real end-to-end data workflow: pulling raw data, cleaning it, doing SQL and visual analysis, training a model on it, and putting the whole thing behind a dashboard.
 
----
+Around 11 million raw trip records came down from the NYC TLC. After cleaning I'm working with about 8.5 million, which adds up to roughly $236 million in fare revenue.
 
-## Headline numbers
-
-| | |
-|---|---|
-| **Trips analysed** | 8,516,174 |
-| **Period** | Jan 1 – Mar 31, 2025 |
-| **Total revenue** | $236 million |
-| **Raw data dropped during cleaning** | 23.9% (sanity filters) |
-| **ML model** | LightGBM trip-duration regressor |
-| **Validation MAE** | **2.77 minutes** |
-| **Validation R²** | **0.864** |
-
----
-
-## What's in the project
+## What's in here
 
 ```
 nyc-taxi-analysis/
 ├── src/
-│   ├── download_data.py      # Streaming Parquet download from TLC CDN
-│   ├── data_cleaning.py      # Filtering + feature engineering
-│   ├── sql_analytics.py      # DuckDB analytical queries
-│   └── train_model.py        # LightGBM training pipeline
-├── notebooks/
-│   └── 01_eda.ipynb          # Visual EDA (heatmaps, distributions, tips)
+│   ├── download_data.py     # downloads the monthly parquet files from TLC
+│   ├── data_cleaning.py     # filters out bad rows, adds features
+│   ├── sql_analytics.py     # DuckDB queries
+│   ├── train_model.py       # trains the LightGBM model
+│   └── bootstrap.py         # rebuilds the dataset on first launch (for deploy)
 ├── dashboard/
-│   └── app.py                # Streamlit dashboard (5 interactive tabs)
+│   └── app.py               # Streamlit dashboard
+├── notebooks/
+│   └── 01_eda.ipynb         # exploratory analysis with charts
 ├── tests/
-│   └── test_cleaning.py      # Unit tests for cleaning logic
-├── data/
-│   ├── raw/                  # Downloaded Parquet (gitignored)
-│   └── processed/            # Cleaned dataset (gitignored)
-├── models/                   # Trained model artifacts + metrics
-├── reports/figures/          # Saved plots (PNG)
+│   └── test_cleaning.py     # pytest tests for the cleaning logic
+├── data/                    # gitignored (too big), gets created locally
+├── models/                  # trained LightGBM model + metrics
+├── reports/
+│   └── NYC_Taxi_2025_Analytics_Report.docx
 ├── requirements.txt
 └── README.md
 ```
 
----
-
-## Tech stack
-
-- **Python 3.12**
-- **Data engineering**: pandas, pyarrow, requests (with progress bar via tqdm)
-- **SQL analytics**: DuckDB (querying Parquet files directly — no ETL step required)
-- **Visualization**: matplotlib, seaborn, plotly
-- **Machine learning**: scikit-learn, LightGBM (gradient-boosted trees)
-- **Dashboard**: Streamlit
-- **Testing**: pytest
-- **Notebooks**: Jupyter
-
----
-
-## Quick start
+## How to run it
 
 ```bash
-# 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Download 3 months of 2025 yellow taxi data (~190 MB)
+# download Jan/Feb/Mar 2025 (about 190 MB)
 python -m src.download_data --year 2025 --months 1 2 3
 
-# 3. Clean and feature-engineer the data (~290 MB output)
+# clean and add features (writes a ~290 MB parquet)
 python -m src.data_cleaning
 
-# 4. Run SQL analytics (prints 8 business reports)
+# print 8 SQL reports to the terminal
 python -m src.sql_analytics
 
-# 5. Train the trip-duration model
+# train the trip-duration model
 python -m src.train_model
 
-# 6. Run the unit tests
+# run the tests
 pytest tests/ -v
 
-# 7. Launch the interactive dashboard
+# launch the dashboard in your browser
 streamlit run dashboard/app.py
 ```
 
-The pipeline is idempotent — already-downloaded files are skipped, and re-running cleaning regenerates the processed dataset from the raw files.
+You don't have to re-run everything every time. If the raw files are already on disk, the download step skips them.
 
----
+## Tech stack
 
-## Findings
+Python 3.12. Pandas + pyarrow for the in-memory stuff, DuckDB for the SQL queries (it can read parquet files directly which is really nice). LightGBM for the model. Streamlit for the dashboard. matplotlib + seaborn + plotly for charts. pytest for the small test suite.
 
-The exploratory analysis surfaces several patterns that are visually obvious once plotted:
+I picked Yellow Taxi specifically (not Green or Uber/Lyft) because the schema has been the most stable over the years, so the code I wrote here can pretty easily be pointed at older or newer files without changes.
 
-- **Demand peaks at 5–6 PM weekdays** and again late Friday/Saturday nights. The full hour × day-of-week heatmap is in [reports/figures/demand_heatmap.png](reports/figures/demand_heatmap.png).
-- **Median trip is short** — about 1.5 miles and ~10 minutes — but the long right tail of airport runs (avg 17.9 mi, $71 fare, 47 min) drags the mean significantly.
-- **Traffic is visible in the data**: average trip speed drops from ~14 mph late-night to **under 10 mph** during the 4–6 PM rush window.
-- **86% of trips are paid by credit card**, with a median tip percentage of ~20% — clearly anchored on the in-cab UX defaults.
-- **Airport trips tip less** in percentage terms (20.1% vs 26.2% for regular trips) but more in absolute dollars.
-- A handful of pickup zone IDs (notably **132**, **138** — JFK and LaGuardia) drive disproportionately large revenue despite lower trip counts.
+## Findings from the analysis
 
-All eight SQL reports (overview, hour-of-day, day-of-week, top zones, payments, airport vs regular, rush-hour impact, top routes) are produced by `src/sql_analytics.py`.
+- Demand peaks at 5-6 PM on weekdays, with a second peak late Friday/Saturday nights. The heatmap in [reports/figures/demand_heatmap.png](reports/figures/demand_heatmap.png) shows this clearly.
+- The median trip is short, only about 1.5 miles and 10 minutes. But there's a long tail of airport runs that average 17.9 miles, $71 fare, and 47 minutes.
+- Traffic shows up in the data. Average trip speed drops from around 14 mph late at night to under 10 mph during the afternoon rush. That's a real congestion footprint.
+- 86% of trips are paid by credit card. Median tip is 20%, very tightly clustered, almost certainly because of the preset buttons in the cab.
+- Airport trips tip a lower percentage (20% vs 26% for regular trips) but bigger absolute dollars because the fares are higher.
+- Two zone IDs - 132 (JFK) and 138 (LaGuardia) - drive way more revenue than their trip count would suggest.
 
----
+## The ML model
 
-## Machine learning — trip duration prediction
+I trained a LightGBM regressor to predict trip duration in minutes. The constraint I gave myself was that the model could only use features that would be known at the moment a trip starts. So no leakage from the dropoff time or final fare.
 
-A LightGBM regressor predicts trip duration in minutes using only **features known at the moment the trip starts** (no leakage from dropoff fields):
-
+Features used:
 - `trip_distance`, `passenger_count`
 - `pickup_hour`, `pickup_dayofweek`, `pickup_month`
-- `pu_location_id`, `do_location_id`, `ratecode_id` (treated as categoricals)
-- Derived flags: `is_weekend`, `is_rush_hour`, `is_airport_trip`
+- `pu_location_id`, `do_location_id`, `ratecode_id` (these are categorical)
+- Engineered flags: `is_weekend`, `is_rush_hour`, `is_airport_trip`
 
-**Trained on 400,000 trips**, validated on 100,000 held-out trips, early-stopping on validation RMSE.
+Trained on 400K sampled trips, validated on 100K held out. Early stopping on validation RMSE.
 
-| Metric | Value |
+| | |
 |---|---|
-| Validation MAE | **2.77 min** |
+| Validation MAE | 2.77 min |
 | Validation RMSE | 4.49 min |
-| Validation R² | **0.864** |
+| Validation R² | 0.864 |
 
-Top features by gain: `trip_distance` (dominant), `ratecode_id` (captures airport flat-rate trips), `pickup_hour` (traffic), then the location IDs. Diagnostic plots at [reports/figures/predicted_vs_actual.png](reports/figures/predicted_vs_actual.png) and [reports/figures/feature_importance.png](reports/figures/feature_importance.png).
+So the typical prediction is within about 3 minutes of the truth, which I think is decent given the model only sees information available at trip start.
 
-The trained model is loaded by the Streamlit dashboard for live inference.
+Distance was by far the most important feature (which isn't surprising). After that, ratecode_id was the most useful because it cleanly identifies the airport flat-rate trips, which behave differently from regular metered trips. Then pickup hour, which captures the traffic effect. The plots are at [reports/figures/predicted_vs_actual.png](reports/figures/predicted_vs_actual.png) and [reports/figures/feature_importance.png](reports/figures/feature_importance.png).
 
----
+The Streamlit dashboard loads this trained model and does live inference when you submit a form.
 
-## Interactive dashboard
+## The dashboard
 
-`streamlit run dashboard/app.py` launches a five-tab dashboard:
+`streamlit run dashboard/app.py` opens a dashboard with 5 tabs:
 
-1. **Overview** — top-level KPIs and a daily volume/revenue trend chart
-2. **Time patterns** — interactive hour × day-of-week demand heatmap
-3. **Geography** — busiest pickup zones with revenue and avg fare
-4. **Payments & tips** — payment-type breakdown and tip-percentage distribution
-5. **ML predictor** — interactive form that calls the trained LightGBM model for live duration predictions
+1. Overview - high level KPIs and a daily trips/revenue line chart
+2. Time patterns - the hour-of-day x day-of-week heatmap
+3. Geography - bar chart of busiest pickup zones (slider to change how many)
+4. Payments & tips - payment breakdown plus the tip percentage histogram
+5. ML predictor - form where you enter trip details and it predicts how long the trip will take
 
-Data is cached with `@st.cache_data` and the DuckDB connection is cached with `@st.cache_resource`, so navigating between tabs is instant after the first load.
+I cached the DuckDB connection and the query results so tab switching is fast.
 
----
+## Data cleaning
 
-## Data quality work
+The raw TLC files have a fair amount of junk in them. The cleaning step drops anything that fails these checks:
 
-The raw TLC files are not analysis-ready. The cleaning step (`src/data_cleaning.py`) drops rows that fail any of:
+- Trip distance outside 0.1 to 100 miles
+- Fare outside $0 to $500
+- Duration outside 1 to 180 minutes
+- Passenger count outside 1 to 6
+- Pickup or dropoff zone ID outside the valid 1 to 265 range
+- Pickup timestamp not in the actual filing year
 
-- Trip distance outside `[0.1, 100]` miles
-- Fare outside `[0, 500]` dollars
-- Duration outside `[1, 180]` minutes
-- Passenger count outside `[1, 6]`
-- Pickup or dropoff zone ID outside the valid `[1, 265]` range
-- Pickup timestamp outside the actual filing year (TLC sometimes leaks trips with timestamps from 2008, 2014, etc.)
+That last one was annoying to figure out. The TLC files occasionally leak in trips with timestamps from 2008, 2014, other random years, and without filtering them out my time series charts had weird outliers.
 
-Roughly 24% of raw rows are dropped — a meaningful share, and a reminder that "8.5 million clean rows" is the right number to quote, not the raw 11.2 million.
+About 24% of the raw rows get dropped, which sounds like a lot but is consistent with what other people have found working with this dataset.
 
----
+## Stuff I'd add if I keep working on this
 
-## What I'd build next
+- A choropleth map of trips/revenue per zone using the TLC shapefile. Right now zones are just integer IDs in the dashboard, which isn't great.
+- Compare against the Uber/Lyft (HVFHV) data for the same period. Yellow Taxi is actually a minority of the for-hire vehicle market in NYC at this point.
+- Replace the point estimate from the model with prediction intervals (P10-P90) using quantile regression.
+- Pull in weather data and add it as a feature. Rainy and snowy days probably mess with the predictions.
 
-- **Geo visualization**: join the TLC taxi-zone shapefile and render a choropleth of trips/revenue per zone with Folium.
-- **Comparison across vehicle types**: download Green Taxi and FHV (Uber/Lyft) data and compare market share over the same window.
-- **Model improvements**: stack the LightGBM model with a quantile regressor to get prediction intervals (P10–P90 ETA), and try a sequence model on the per-zone time series.
-- **Deployment**: containerise the dashboard and host it on Streamlit Community Cloud or Fly.io so the project is one click away from a recruiter's browser.
+## Data source
 
----
-
-## Data attribution
-
-Trip records are published monthly by the [NYC Taxi & Limousine Commission](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) as public-domain Parquet files. This project uses the Yellow Taxi files for January, February, and March 2025.
-
----
-
-*Built by Kishan, 2026.*
+All trip data is published monthly by the [NYC Taxi & Limousine Commission](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) as public Parquet files. I'm using Yellow Taxi for January, February, and March 2025.
